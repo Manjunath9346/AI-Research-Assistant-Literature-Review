@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+data/chat_history.db
+data/chroma_db/
+
+.vscode/
