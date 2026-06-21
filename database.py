@@ -1,10 +1,14 @@
 import sqlite3
 import json
 import hashlib
+import os          # <-- Add this import
 from datetime import datetime
 from typing import List, Dict, Optional
 
+# ===== ADD THIS LINE =====
 DB_PATH = "data/chat_history.db"
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+# ===== END =====
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
@@ -16,7 +20,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,13 +30,12 @@ def init_db():
         )
     ''')
     
-    # Chats table (stores conversation history)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             title TEXT NOT NULL,
-            messages TEXT NOT NULL,  -- JSON array of messages
+            messages TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
@@ -47,7 +49,6 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 def create_user(username: str, password: str, display_name: str) -> bool:
-    """Create a new user. Returns True if successful."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -62,7 +63,6 @@ def create_user(username: str, password: str, display_name: str) -> bool:
         return False
 
 def authenticate_user(username: str, password: str) -> Optional[Dict]:
-    """Check credentials and return user dict if valid."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -82,7 +82,6 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
     return dict(user) if user else None
 
 def save_chat(user_id: int, title: str, messages: List[Dict]) -> int:
-    """Save a chat conversation. Returns the chat ID."""
     conn = get_db_connection()
     cursor = conn.cursor()
     messages_json = json.dumps(messages)
@@ -96,7 +95,6 @@ def save_chat(user_id: int, title: str, messages: List[Dict]) -> int:
     return chat_id
 
 def update_chat(chat_id: int, messages: List[Dict]):
-    """Update an existing chat's messages."""
     conn = get_db_connection()
     cursor = conn.cursor()
     messages_json = json.dumps(messages)
@@ -108,7 +106,6 @@ def update_chat(chat_id: int, messages: List[Dict]):
     conn.close()
 
 def get_user_chats(user_id: int) -> List[Dict]:
-    """Get all chats for a user, ordered by most recent first."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -120,7 +117,6 @@ def get_user_chats(user_id: int) -> List[Dict]:
     return chats
 
 def get_chat(chat_id: int, user_id: int) -> Optional[Dict]:
-    """Get a specific chat if it belongs to the user."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -136,7 +132,6 @@ def get_chat(chat_id: int, user_id: int) -> Optional[Dict]:
     return None
 
 def delete_chat(chat_id: int, user_id: int) -> bool:
-    """Delete a chat if it belongs to the user."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM chats WHERE id = ? AND user_id = ?", (chat_id, user_id))
@@ -146,7 +141,6 @@ def delete_chat(chat_id: int, user_id: int) -> bool:
     return deleted
 
 def get_or_create_user_id(username: str, password: str, display_name: str) -> Optional[int]:
-    """Get existing user ID or create new user."""
     user = authenticate_user(username, password)
     if user:
         return user['id']
